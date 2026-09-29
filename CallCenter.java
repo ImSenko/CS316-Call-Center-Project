@@ -25,10 +25,10 @@ public class CallCenter {
     private final static ReentrantLock serLock =
         new ReentrantLock();
     private final static Condition serqNotEmpty = 
-        arrLock.newCondition();
+        serLock.newCondition();
 
     //Adding customer to greeting que
-    public static void addgreet(int customerID){
+    public static void arrq(int customerID){
         arrLock.lock();
         try{
             arrq.add(customerID);
@@ -39,32 +39,40 @@ public class CallCenter {
             arrLock.unlock();
         }
     }
-    //Adding customer to service que and removing from greeting que
-    public static void addserv(int customerID){
-        int customerID;
+
+    public static int takegreet() throws InterruptedException{
+        arrLock.lock();
+        try{
+            while(arrq.isEmpty()){
+                arrqNotEmpty.await();
+            }
+            return arrq.remove();
+        }finally{
+            arrLock.unlock();
+        }
+    }
+    //Adding customer to service que
+    public static int addserv(int customerID){
         serLock.lock();
         try{
-            while(serq.isEmpty()){
-                serqNotEmpty.await();
-            }
-            customerID = arrq.remove();
+            serq.add(customerID);
+            int position = serq.size();
+            serqNotEmpty.signal();
+            return position;
         }finally{
             serLock.unlock();
         }
     }
-    public static int takecall() throws Exception{
-        int customerID;
+    public static int takeCall() throws Exception{
         serLock.lock();
         try{
             while(serq.isEmpty()){
                 serqNotEmpty.await();
             }
-            customerID = serq.remove();
+            return serq.remove();
         }finally{
             serLock.unlock();
         }
-        return customerID;
-
     }
 public static void main(String[] args) throws Exception{
     ExecutorService agentPool = Executors.newFixedThreadPool(totalAgents);
@@ -76,7 +84,7 @@ public static void main(String[] args) throws Exception{
     }
     for(int x=1; x<= totalCustomers; x++){
         customerPool.submit(new Customer(x));
-        Thread.sleep(ThreadLocalRandom.current().nextInt(10,100));
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10,101));
     }
     customerPool.shutdown();    
     agentPool.shutdown();

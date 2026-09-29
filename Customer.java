@@ -5,7 +5,6 @@ public class Customer implements Runnable{
         this.ID = ID;
     }
     public void run(){
-        CallCenter.addgreet(ID);
+        CallCenter.arrq(ID);
     }
-
 }
